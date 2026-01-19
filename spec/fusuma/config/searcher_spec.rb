@@ -33,21 +33,40 @@ module Fusuma
     end
 
     describe ".search" do
-      let(:index) { nil }
+      let(:searcher) { Config::Searcher.new }
       let(:location) { Config.instance.keymap[0] }
-      let(:search) { Config::Searcher.new.search(index, location: location) }
-      context "index correct order" do
+
+      subject { searcher.search(index, location: location) }
+
+      context "with correct key order" do
         let(:index) { Config::Index.new %w[pinch in command] }
-        it { expect(Config::Searcher.new.search(index, location: location)).to eq "ctrl+plus" }
+        it { is_expected.to eq "ctrl+plus" }
       end
 
-      context "index incorrect order" do
+      context "with incorrect key order" do
         let(:index) { Config::Index.new %w[in pinch 2 command] }
-        it { expect(Config::Searcher.new.search(index, location: location)).not_to eq "ctrl+plus" }
+        it { is_expected.to be_nil }
       end
 
-      context "with Skip conditions" do
-        context "when index includes skippable key" do
+      # nested recursive calls reused mutated index.keys
+      context "index immutability" do
+        let(:index) { Config::Index.new %w[pinch in command] }
+
+        it "does not mutate the original index.keys after search" do
+          original_keys_count = index.keys.size
+          subject
+          expect(index.keys.size).to eq(original_keys_count)
+        end
+
+        it "returns consistent results when searching with the same index multiple times" do
+          expect(subject).to eq("ctrl+plus")
+          expect(subject).to eq("ctrl+plus")
+          expect(subject).to eq("ctrl+plus")
+        end
+      end
+
+      context "with skippable keys" do
+        context "when skippable key is in the middle" do
           let(:index) do
             Config::Index.new [
               Config::Index::Key.new("pinch"),
@@ -56,13 +75,11 @@ module Fusuma
               Config::Index::Key.new("command")
             ]
           end
-          it "detects ctrl+minus with skip" do
-            value = Config::Searcher.new.search(index, location: location)
-            expect(value).to eq("ctrl+minus")
-          end
+
+          it { is_expected.to eq("ctrl+minus") }
         end
 
-        context "when index includes skippable key at first" do
+        context "when skippable keys are at the beginning and middle" do
           let(:index) do
             Config::Index.new [
               Config::Index::Key.new(:hoge, skippable: true),
@@ -73,13 +90,11 @@ module Fusuma
               Config::Index::Key.new("command")
             ]
           end
-          it "detects ctrl+plus with skip" do
-            value = Config::Searcher.new.search(index, location: location)
-            expect(value).to eq("ctrl+plus")
-          end
+
+          it { is_expected.to eq("ctrl+plus") }
         end
 
-        context "with begin/update/end" do
+        context "with gesture lifecycle (begin/update/end)" do
           around do |example|
             ConfigHelper.load_config_yml = <<~CONFIG
               swipe:
@@ -94,13 +109,11 @@ module Fusuma
                       LEFTCTRL:
                         command: 'echo end+ctrl'
             CONFIG
-
             example.run
-
             ConfigHelper.clear_config_yml
           end
 
-          context "without keypress" do
+          context "without keypress modifier" do
             let(:index) do
               Config::Index.new [
                 Config::Index::Key.new(:swipe),
@@ -111,13 +124,11 @@ module Fusuma
               ]
             end
 
-            it "detects with skip" do
-              value = Config::Searcher.new.search(index, location: location)
-              expect([value]).to eq(["echo end"])
-            end
+            it { is_expected.to eq("echo end") }
           end
-          context "with keypress" do
-            context "with valid key existing in config.yml" do
+
+          context "with keypress modifier" do
+            context "when key exists in config" do
               let(:index) do
                 Config::Index.new [
                   Config::Index::Key.new(:swipe),
@@ -129,12 +140,11 @@ module Fusuma
                   Config::Index::Key.new("command")
                 ]
               end
-              it "detects end+ctrl with skip" do
-                value = Config::Searcher.new.search(index, location: location)
-                expect(value).to eq("echo end+ctrl")
-              end
+
+              it { is_expected.to eq("echo end+ctrl") }
             end
-            context "with non-existing key not existing in config.yml" do
+
+            context "when key does not exist in config (fallback)" do
               let(:index) do
                 Config::Index.new [
                   Config::Index::Key.new(:swipe),
@@ -142,14 +152,12 @@ module Fusuma
                   Config::Index::Key.new("up", skippable: true),
                   Config::Index::Key.new("end"),
                   Config::Index::Key.new("keypress", skippable: true),
-                  Config::Index::Key.new("LEFTSHIFT", skippable: true), # Invalid key
+                  Config::Index::Key.new("LEFTSHIFT", skippable: true),
                   Config::Index::Key.new("command")
                 ]
               end
-              it "detects end with skip (fallback to no keypress)" do
-                value = Config::Searcher.new.search(index, location: location)
-                expect(value).to eq("echo end")
-              end
+
+              it { is_expected.to eq("echo end") }
             end
           end
         end

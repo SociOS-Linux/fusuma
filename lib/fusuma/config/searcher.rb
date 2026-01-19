@@ -19,18 +19,16 @@ module Fusuma
       def search(index, location:)
         key = index.keys.first
         return location if key.nil?
-
         return nil if location.nil?
-
         return nil unless location.is_a?(Hash)
 
-        next_index = Index.new(Array(index.keys[1..-1]))
+        next_index = Index.new(index.keys.drop(1))
 
-        value = nil
-        next_location_cadidates(location, key).find do |next_location|
-          value = search(next_index, location: next_location)
+        next_location_cadidates(location, key).each do |next_location|
+          result = search(next_index, location: next_location)
+          return result if result
         end
-        value
+        nil
       end
 
       #: (Fusuma::Config::Index, location: Array[untyped], context: Hash[untyped, untyped] | nil) -> untyped
@@ -77,7 +75,7 @@ module Fusuma
       def next_location_cadidates(location, key)
         [
           location[key.symbol],
-          key.skippable && location
+          key.skippable ? location : nil
         ].compact
       end
 
