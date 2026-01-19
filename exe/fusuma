@@ -1,47 +1,47 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-require 'optparse'
-require_relative '../lib/fusuma'
+require "optparse"
+require_relative "../lib/fusuma"
 
 option = {}
 opt = OptionParser.new
 
-opt.on('-c', '--config=path/to/file',
-       'Use an alternative config file') do |v|
+opt.on("-c", "--config=path/to/file",
+  "Use an alternative config file") do |v|
   option[:config_path] = v
 end
 
-opt.on('-d', '--daemon',
-       'Daemonize process') do |v|
+opt.on("-d", "--daemon",
+  "Daemonize process") do |v|
   option[:daemon] = v
 end
 
-opt.on('-l', '--list-devices',
-       'List available devices') do |v|
+opt.on("-l", "--list-devices",
+  "List available devices") do |v|
   option[:list] = v
 end
 
-opt.on('--log=path/to/file',
-       'Print logs to file') do |v|
+opt.on("--log=path/to/file",
+  "Print logs to file") do |v|
   option[:log_filepath] = v
 end
 
-opt.on('--show-config', 'Show config as YAML format which is loaded internally') do |v|
+opt.on("--show-config", "Show config as YAML format which is loaded internally") do |v|
   option[:show_config] = v
 end
 
 opt.on('--device="Device name"',
-       'Open the given device only (DEPRECATED)') do |v|
+  "Open the given device only (DEPRECATED)") do |v|
   option[:device] = v
 end
 
-opt.on('-v', '--verbose',
-       'Show details about the results of running fusuma') do |v|
+opt.on("-v", "--verbose",
+  "Show details about the results of running fusuma") do |v|
   option[:verbose] = v
 end
 
-opt.on('--version', 'Show fusuma version') do |v|
+opt.on("--version", "Show fusuma version") do |v|
   option[:version] = v
 end
 

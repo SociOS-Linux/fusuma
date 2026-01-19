@@ -9,6 +9,7 @@ module Fusuma
       # libinput commands wrapper
       class TimerInput < Input
         include Singleton
+
         DEFAULT_INTERVAL = 5
         EPSILON_TIME = 0.02
         def config_param_types
