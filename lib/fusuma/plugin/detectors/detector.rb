@@ -8,6 +8,7 @@ module Fusuma
     module Detectors
       # Inherite this base
       class Detector < Base
+        #: (String) -> String
         def self.type(tag_name)
           tag_name.gsub("_detector", "")
         end

@@ -3,7 +3,8 @@ module Fusuma
     module Detectors
       # Inherite this base
       class Detector < Base
-        def self.type: (untyped tag_name) -> untyped
+        # : (String) -> String
+        def self.type: (String) -> String
 
         # : (*nil) -> void
         def initialize: (*nil) -> void
