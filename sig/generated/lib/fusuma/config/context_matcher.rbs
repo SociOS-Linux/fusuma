@@ -1,0 +1,20 @@
+module Fusuma
+  class Config
+    # Matches context conditions for configuration lookup.
+    # Supports AND (multiple keys) and OR (array values) conditions.
+    class ContextMatcher
+      # Check if config context matches request context.
+      # @param config_context [Hash, nil] context defined in YAML config
+      # @param request_context [Hash, nil] context from runtime
+      # @return [Boolean] true if matched
+      # : (Hash[untyped, untyped]?, Hash[untyped, untyped]?) -> bool
+      def self.match?: (Hash[untyped, untyped]?, Hash[untyped, untyped]?) -> bool
+
+      # @param expected [Object] expected value (single or array for OR)
+      # @param actual [Object] actual value from request context
+      # @return [Boolean] true if matched
+      # : (untyped, untyped) -> bool
+      private def self.match_value?: (untyped, untyped) -> bool
+    end
+  end
+end
