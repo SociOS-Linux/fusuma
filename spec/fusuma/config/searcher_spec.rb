@@ -360,6 +360,125 @@ module Fusuma
       end
     end
 
+    describe "#search_with_context" do
+      let(:searcher) { Config::Searcher.new }
+
+      context "with no-context and context blocks" do
+        around do |example|
+          ConfigHelper.load_config_yml = <<~CONFIG
+            ---
+            swipe:
+              3:
+                left:
+                  command: 'default-back'
+            ---
+            context:
+              application:
+                - Google-chrome
+                - Firefox
+            swipe:
+              3:
+                left:
+                  command: 'browser-back'
+          CONFIG
+          example.run
+          ConfigHelper.clear_config_yml
+        end
+
+        let(:location) { Config.instance.keymap }
+        let(:index) { Config::Index.new(%w[swipe 3 left command]) }
+
+        context "when context is nil" do
+          it "searches in no-context blocks only" do
+            result = searcher.search_with_context(index, location: location, context: nil)
+            expect(result).to eq("default-back")
+          end
+        end
+
+        context "when context is empty hash" do
+          it "searches in no-context blocks only" do
+            result = searcher.search_with_context(index, location: location, context: {})
+            expect(result).to eq("default-back")
+          end
+        end
+
+        context "when context matches OR condition" do
+          it "searches in context blocks matching the condition" do
+            result = searcher.search_with_context(index, location: location, context: {application: "Google-chrome"})
+            expect(result).to eq("browser-back")
+          end
+
+          it "matches another value in OR array" do
+            result = searcher.search_with_context(index, location: location, context: {application: "Firefox"})
+            expect(result).to eq("browser-back")
+          end
+        end
+
+        context "when context does not match any block" do
+          it "returns nil" do
+            result = searcher.search_with_context(index, location: location, context: {application: "Safari"})
+            expect(result).to be_nil
+          end
+        end
+      end
+
+      context "with no-context block only" do
+        around do |example|
+          ConfigHelper.load_config_yml = <<~CONFIG
+            swipe:
+              3:
+                left:
+                  command: 'default-back'
+          CONFIG
+          example.run
+          ConfigHelper.clear_config_yml
+        end
+
+        let(:location) { Config.instance.keymap }
+        let(:index) { Config::Index.new(%w[swipe 3 left command]) }
+
+        it "returns nil when searching with specific context" do
+          result = searcher.search_with_context(index, location: location, context: {application: "Chrome"})
+          expect(result).to be_nil
+        end
+      end
+
+      context "skipping no-context blocks when context is specified" do
+        around do |example|
+          ConfigHelper.load_config_yml = <<~CONFIG
+            ---
+            remap:
+              H: 'default-h'
+            ---
+            context:
+              thumbsense: true
+            remap:
+              H: 'thumbsense-h'
+          CONFIG
+          example.run
+          ConfigHelper.clear_config_yml
+        end
+
+        let(:location) { Config.instance.keymap }
+        let(:index) { Config::Index.new(%w[remap H]) }
+
+        it "skips no-context block and finds context block" do
+          result = searcher.search_with_context(index, location: location, context: {thumbsense: true})
+          expect(result).to eq("thumbsense-h")
+        end
+
+        it "finds no-context block when context is nil" do
+          result = searcher.search_with_context(index, location: location, context: nil)
+          expect(result).to eq("default-h")
+        end
+
+        it "returns nil when context does not match" do
+          result = searcher.search_with_context(index, location: location, context: {thumbsense: false})
+          expect(result).to be_nil
+        end
+      end
+    end
+
     describe "private_method: :cache" do
       it "should cache command" do
         key = %w[event_type finger direction command].join(",")
