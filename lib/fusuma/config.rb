@@ -3,6 +3,7 @@
 require_relative "multi_logger"
 require_relative "config/index"
 require_relative "config/searcher"
+require_relative "config/context_matcher"
 require_relative "config/yaml_duplication_checker"
 require_relative "plugin/manager"
 require_relative "hash_support"

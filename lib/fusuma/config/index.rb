@@ -45,6 +45,8 @@ module Fusuma
           @symbol = case symbol_word
           when Integer, Symbol
             symbol_word
+          when /\A[1-9]\d*\z/
+            symbol_word.to_i
           else
             symbol_word.to_sym
           end

@@ -198,6 +198,285 @@ module Fusuma
         expect(matched).to eq request_context
         expect(device_name).to eq "keyboard|Keyboard|KEYBOARD"
       end
+
+      context "with OR condition (array value)" do
+        around do |example|
+          ConfigHelper.load_config_yml = <<~CONFIG
+            ---
+            context:
+              application:
+                - Chrome
+                - Firefox
+            swipe:
+              3:
+                left:
+                  command: 'browser-back'
+          CONFIG
+          example.run
+          ConfigHelper.clear_config_yml
+        end
+
+        it "matches when request value is in the array" do
+          request_context = {application: "Chrome"}
+          matched = Config::Searcher.find_context(request_context) do
+            Config.search(Config::Index.new(%w[swipe 3 left command]))
+          end
+          expect(matched).to eq({application: ["Chrome", "Firefox"]})
+        end
+
+        it "matches when request value is another element in the array" do
+          request_context = {application: "Firefox"}
+          matched = Config::Searcher.find_context(request_context) do
+            Config.search(Config::Index.new(%w[swipe 3 left command]))
+          end
+          expect(matched).to eq({application: ["Chrome", "Firefox"]})
+        end
+
+        it "returns nil when request value is not in the array and no default exists" do
+          request_context = {application: "Safari"}
+          matched = Config::Searcher.find_context(request_context) do
+            Config.search(Config::Index.new(%w[swipe 3 left command]))
+          end
+          expect(matched).to be_nil
+        end
+      end
+
+      context "with AND + OR condition" do
+        around do |example|
+          ConfigHelper.load_config_yml = <<~CONFIG
+            ---
+            context:
+              thumbsense: true
+              application:
+                - Chrome
+                - Firefox
+            remap:
+              H: 'alt+Left'
+          CONFIG
+          example.run
+          ConfigHelper.clear_config_yml
+        end
+
+        it "matches when both AND and OR conditions are satisfied" do
+          request_context = {thumbsense: true, application: "Chrome"}
+          matched = Config::Searcher.find_context(request_context) do
+            Config.search(Config::Index.new(%w[remap H]))
+          end
+          expect(matched).to eq({thumbsense: true, application: ["Chrome", "Firefox"]})
+        end
+
+        it "returns nil when OR is satisfied but AND is not" do
+          request_context = {thumbsense: false, application: "Chrome"}
+          matched = Config::Searcher.find_context(request_context) do
+            Config.search(Config::Index.new(%w[remap H]))
+          end
+          expect(matched).to be_nil
+        end
+
+        it "returns nil when AND is satisfied but OR is not" do
+          request_context = {thumbsense: true, application: "Safari"}
+          matched = Config::Searcher.find_context(request_context) do
+            Config.search(Config::Index.new(%w[remap H]))
+          end
+          expect(matched).to be_nil
+        end
+      end
+
+      context "with same application in multiple context blocks (OR and single)" do
+        around do |example|
+          ConfigHelper.load_config_yml = <<~CONFIG
+            ---
+            context:
+              application:
+                - Google-chrome
+                - Microsoft-edge-dev
+            remap:
+              LEFTCTRL+Q: 'LEFTCTRL+W'
+            ---
+            context:
+              application: Google-chrome
+            swipe:
+              3:
+                left:
+                  sendkey: "LEFTALT+RIGHT"
+          CONFIG
+          example.run
+          ConfigHelper.clear_config_yml
+        end
+
+        it "finds remap config for Google-chrome via OR condition" do
+          request_context = {application: "Google-chrome"}
+          matched = Config::Searcher.find_context(request_context) do
+            Config.search(Config::Index.new(%w[remap LEFTCTRL+Q]))
+          end
+          expect(matched).to eq({application: ["Google-chrome", "Microsoft-edge-dev"]})
+        end
+
+        it "finds swipe config for Google-chrome via single value condition" do
+          request_context = {application: "Google-chrome"}
+          matched = Config::Searcher.find_context(request_context) do
+            Config.search(Config::Index.new(%w[swipe 3 left sendkey]))
+          end
+          expect(matched).to eq({application: "Google-chrome"})
+        end
+
+        it "finds remap config for Microsoft-edge-dev via OR condition" do
+          request_context = {application: "Microsoft-edge-dev"}
+          matched = Config::Searcher.find_context(request_context) do
+            Config.search(Config::Index.new(%w[remap LEFTCTRL+Q]))
+          end
+          expect(matched).to eq({application: ["Google-chrome", "Microsoft-edge-dev"]})
+        end
+
+        it "does not find swipe config for Microsoft-edge-dev (not in single value context)" do
+          request_context = {application: "Microsoft-edge-dev"}
+          matched = Config::Searcher.find_context(request_context) do
+            Config.search(Config::Index.new(%w[swipe 3 left sendkey]))
+          end
+          expect(matched).to be_nil
+        end
+
+        # Test for with_context (used by fusuma-plugin-remap)
+        it "finds remap config via with_context for Google-chrome (OR condition)" do
+          result = Config::Searcher.with_context({application: "Google-chrome"}) do
+            Config.search(Config::Index.new(%w[remap LEFTCTRL+Q]))
+          end
+          expect(result).to eq("LEFTCTRL+W")
+        end
+
+        it "finds remap config via with_context for Microsoft-edge-dev (OR condition)" do
+          result = Config::Searcher.with_context({application: "Microsoft-edge-dev"}) do
+            Config.search(Config::Index.new(%w[remap LEFTCTRL+Q]))
+          end
+          expect(result).to eq("LEFTCTRL+W")
+        end
+
+        it "does not find remap config via with_context for Firefox (not in OR array)" do
+          result = Config::Searcher.with_context({application: "Firefox"}) do
+            Config.search(Config::Index.new(%w[remap LEFTCTRL+Q]))
+          end
+          expect(result).to be_nil
+        end
+      end
+    end
+
+    describe "#search_with_context" do
+      let(:searcher) { Config::Searcher.new }
+
+      context "with no-context and context blocks" do
+        around do |example|
+          ConfigHelper.load_config_yml = <<~CONFIG
+            ---
+            swipe:
+              3:
+                left:
+                  command: 'default-back'
+            ---
+            context:
+              application:
+                - Google-chrome
+                - Firefox
+            swipe:
+              3:
+                left:
+                  command: 'browser-back'
+          CONFIG
+          example.run
+          ConfigHelper.clear_config_yml
+        end
+
+        let(:location) { Config.instance.keymap }
+        let(:index) { Config::Index.new(%w[swipe 3 left command]) }
+
+        context "when context is nil" do
+          it "searches in no-context blocks only" do
+            result = searcher.search_with_context(index, location: location, context: nil)
+            expect(result).to eq("default-back")
+          end
+        end
+
+        context "when context is empty hash" do
+          it "searches in no-context blocks only" do
+            result = searcher.search_with_context(index, location: location, context: {})
+            expect(result).to eq("default-back")
+          end
+        end
+
+        context "when context matches OR condition" do
+          it "searches in context blocks matching the condition" do
+            result = searcher.search_with_context(index, location: location, context: {application: "Google-chrome"})
+            expect(result).to eq("browser-back")
+          end
+
+          it "matches another value in OR array" do
+            result = searcher.search_with_context(index, location: location, context: {application: "Firefox"})
+            expect(result).to eq("browser-back")
+          end
+        end
+
+        context "when context does not match any block" do
+          it "returns nil" do
+            result = searcher.search_with_context(index, location: location, context: {application: "Safari"})
+            expect(result).to be_nil
+          end
+        end
+      end
+
+      context "with no-context block only" do
+        around do |example|
+          ConfigHelper.load_config_yml = <<~CONFIG
+            swipe:
+              3:
+                left:
+                  command: 'default-back'
+          CONFIG
+          example.run
+          ConfigHelper.clear_config_yml
+        end
+
+        let(:location) { Config.instance.keymap }
+        let(:index) { Config::Index.new(%w[swipe 3 left command]) }
+
+        it "returns nil when searching with specific context" do
+          result = searcher.search_with_context(index, location: location, context: {application: "Chrome"})
+          expect(result).to be_nil
+        end
+      end
+
+      context "skipping no-context blocks when context is specified" do
+        around do |example|
+          ConfigHelper.load_config_yml = <<~CONFIG
+            ---
+            remap:
+              H: 'default-h'
+            ---
+            context:
+              thumbsense: true
+            remap:
+              H: 'thumbsense-h'
+          CONFIG
+          example.run
+          ConfigHelper.clear_config_yml
+        end
+
+        let(:location) { Config.instance.keymap }
+        let(:index) { Config::Index.new(%w[remap H]) }
+
+        it "skips no-context block and finds context block" do
+          result = searcher.search_with_context(index, location: location, context: {thumbsense: true})
+          expect(result).to eq("thumbsense-h")
+        end
+
+        it "finds no-context block when context is nil" do
+          result = searcher.search_with_context(index, location: location, context: nil)
+          expect(result).to eq("default-h")
+        end
+
+        it "returns nil when context does not match" do
+          result = searcher.search_with_context(index, location: location, context: {thumbsense: false})
+          expect(result).to be_nil
+        end
+      end
     end
 
     describe "private_method: :cache" do
