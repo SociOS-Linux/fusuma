@@ -56,7 +56,8 @@ module Fusuma
       # : (Hash[untyped, untyped]) { () -> untyped } -> Hash[untyped, untyped]?
       private def self.no_context: (Hash[untyped, untyped]) { () -> untyped } -> Hash[untyped, untyped]?
 
-      # Complete match request context
+      # Match config context with request context using ContextMatcher.
+      # Supports OR condition (array values) and AND condition (multiple keys).
       # @param request_context [Hash]
       # @return [Hash] matched context
       # @return [NilClass] if not matched

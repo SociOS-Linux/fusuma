@@ -35,7 +35,10 @@ module Fusuma
       def search_with_context(index, location:, context:)
         return nil if location.nil?
 
-        return search(index, location: location[0]) if context == {}
+        if context == {}
+          no_context_conf = location.find { |conf| conf[:context].nil? }
+          return no_context_conf ? search(index, location: no_context_conf) : nil
+        end
 
         value = nil
         location.find do |conf|
@@ -101,12 +104,11 @@ module Fusuma
         #: (Hash[untyped, untyped], ?Array[untyped]) { () -> untyped } -> Hash[untyped, untyped]?
         def find_context(request_context, fallbacks = CONTEXT_SEARCH_ORDER, &block)
           # Search in blocks in the following order.
-          # 1. primary context(no context)
-          # 2. complete match config[:context] == request_context
-          # 3. partial match config[:context] =~ request_context
-          # no_context?(&block) ||
-          #   complete_match_context(request_context, &block) ||
-          #   partial_match_context(request_context, &block)
+          # 1. no_context: primary context (no context specified)
+          # 2. complete_match_context: config[:context] matches request_context
+          #    - Supports OR condition (array values)
+          #    - Supports AND condition (multiple keys)
+          # 3. partial_match_context: config[:context] partially matches request_context
           fallbacks.find do |method|
             result = send(method, request_context, &block)
             return result if result
@@ -123,14 +125,15 @@ module Fusuma
           {} if with_context({}, &block)
         end
 
-        # Complete match request context
+        # Match config context with request context using ContextMatcher.
+        # Supports OR condition (array values) and AND condition (multiple keys).
         # @param request_context [Hash]
         # @return [Hash] matched context
         # @return [NilClass] if not matched
         #: (Hash[untyped, untyped]) { () -> untyped } -> Hash[untyped, untyped]?
         def complete_match_context(request_context, &block)
           Config.instance.keymap.each do |config|
-            next unless config[:context] == request_context
+            next unless ContextMatcher.match?(config[:context], request_context)
             return config[:context] if with_context(config[:context], &block)
           end
           nil

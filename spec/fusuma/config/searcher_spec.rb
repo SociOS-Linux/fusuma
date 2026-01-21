@@ -198,6 +198,89 @@ module Fusuma
         expect(matched).to eq request_context
         expect(device_name).to eq "keyboard|Keyboard|KEYBOARD"
       end
+
+      context "with OR condition (array value)" do
+        around do |example|
+          ConfigHelper.load_config_yml = <<~CONFIG
+            ---
+            context:
+              application:
+                - Chrome
+                - Firefox
+            swipe:
+              3:
+                left:
+                  command: 'browser-back'
+          CONFIG
+          example.run
+          ConfigHelper.clear_config_yml
+        end
+
+        it "matches when request value is in the array" do
+          request_context = {application: "Chrome"}
+          matched = Config::Searcher.find_context(request_context) do
+            Config.search(Config::Index.new(%w[swipe 3 left command]))
+          end
+          expect(matched).to eq({application: ["Chrome", "Firefox"]})
+        end
+
+        it "matches when request value is another element in the array" do
+          request_context = {application: "Firefox"}
+          matched = Config::Searcher.find_context(request_context) do
+            Config.search(Config::Index.new(%w[swipe 3 left command]))
+          end
+          expect(matched).to eq({application: ["Chrome", "Firefox"]})
+        end
+
+        it "returns nil when request value is not in the array and no default exists" do
+          request_context = {application: "Safari"}
+          matched = Config::Searcher.find_context(request_context) do
+            Config.search(Config::Index.new(%w[swipe 3 left command]))
+          end
+          expect(matched).to be_nil
+        end
+      end
+
+      context "with AND + OR condition" do
+        around do |example|
+          ConfigHelper.load_config_yml = <<~CONFIG
+            ---
+            context:
+              thumbsense: true
+              application:
+                - Chrome
+                - Firefox
+            remap:
+              H: 'alt+Left'
+          CONFIG
+          example.run
+          ConfigHelper.clear_config_yml
+        end
+
+        it "matches when both AND and OR conditions are satisfied" do
+          request_context = {thumbsense: true, application: "Chrome"}
+          matched = Config::Searcher.find_context(request_context) do
+            Config.search(Config::Index.new(%w[remap H]))
+          end
+          expect(matched).to eq({thumbsense: true, application: ["Chrome", "Firefox"]})
+        end
+
+        it "returns nil when OR is satisfied but AND is not" do
+          request_context = {thumbsense: false, application: "Chrome"}
+          matched = Config::Searcher.find_context(request_context) do
+            Config.search(Config::Index.new(%w[remap H]))
+          end
+          expect(matched).to be_nil
+        end
+
+        it "returns nil when AND is satisfied but OR is not" do
+          request_context = {thumbsense: true, application: "Safari"}
+          matched = Config::Searcher.find_context(request_context) do
+            Config.search(Config::Index.new(%w[remap H]))
+          end
+          expect(matched).to be_nil
+        end
+      end
     end
 
     describe "private_method: :cache" do
