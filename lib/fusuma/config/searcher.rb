@@ -42,7 +42,7 @@ module Fusuma
 
         value = nil
         location.find do |conf|
-          value = search(index, location: conf) if conf[:context] == context
+          value = search(index, location: conf) if ContextMatcher.match?(conf[:context], context)
         end
         value
       end

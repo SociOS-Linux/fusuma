@@ -281,6 +281,83 @@ module Fusuma
           expect(matched).to be_nil
         end
       end
+
+      context "with same application in multiple context blocks (OR and single)" do
+        around do |example|
+          ConfigHelper.load_config_yml = <<~CONFIG
+            ---
+            context:
+              application:
+                - Google-chrome
+                - Microsoft-edge-dev
+            remap:
+              LEFTCTRL+Q: 'LEFTCTRL+W'
+            ---
+            context:
+              application: Google-chrome
+            swipe:
+              3:
+                left:
+                  sendkey: "LEFTALT+RIGHT"
+          CONFIG
+          example.run
+          ConfigHelper.clear_config_yml
+        end
+
+        it "finds remap config for Google-chrome via OR condition" do
+          request_context = {application: "Google-chrome"}
+          matched = Config::Searcher.find_context(request_context) do
+            Config.search(Config::Index.new(%w[remap LEFTCTRL+Q]))
+          end
+          expect(matched).to eq({application: ["Google-chrome", "Microsoft-edge-dev"]})
+        end
+
+        it "finds swipe config for Google-chrome via single value condition" do
+          request_context = {application: "Google-chrome"}
+          matched = Config::Searcher.find_context(request_context) do
+            Config.search(Config::Index.new(%w[swipe 3 left sendkey]))
+          end
+          expect(matched).to eq({application: "Google-chrome"})
+        end
+
+        it "finds remap config for Microsoft-edge-dev via OR condition" do
+          request_context = {application: "Microsoft-edge-dev"}
+          matched = Config::Searcher.find_context(request_context) do
+            Config.search(Config::Index.new(%w[remap LEFTCTRL+Q]))
+          end
+          expect(matched).to eq({application: ["Google-chrome", "Microsoft-edge-dev"]})
+        end
+
+        it "does not find swipe config for Microsoft-edge-dev (not in single value context)" do
+          request_context = {application: "Microsoft-edge-dev"}
+          matched = Config::Searcher.find_context(request_context) do
+            Config.search(Config::Index.new(%w[swipe 3 left sendkey]))
+          end
+          expect(matched).to be_nil
+        end
+
+        # Test for with_context (used by fusuma-plugin-remap)
+        it "finds remap config via with_context for Google-chrome (OR condition)" do
+          result = Config::Searcher.with_context({application: "Google-chrome"}) do
+            Config.search(Config::Index.new(%w[remap LEFTCTRL+Q]))
+          end
+          expect(result).to eq("LEFTCTRL+W")
+        end
+
+        it "finds remap config via with_context for Microsoft-edge-dev (OR condition)" do
+          result = Config::Searcher.with_context({application: "Microsoft-edge-dev"}) do
+            Config.search(Config::Index.new(%w[remap LEFTCTRL+Q]))
+          end
+          expect(result).to eq("LEFTCTRL+W")
+        end
+
+        it "does not find remap config via with_context for Firefox (not in OR array)" do
+          result = Config::Searcher.with_context({application: "Firefox"}) do
+            Config.search(Config::Index.new(%w[remap LEFTCTRL+Q]))
+          end
+          expect(result).to be_nil
+        end
+      end
     end
 
     describe "private_method: :cache" do

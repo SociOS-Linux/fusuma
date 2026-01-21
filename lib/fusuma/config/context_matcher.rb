@@ -29,7 +29,11 @@ module Fusuma
         def match_value?(expected, actual)
           case expected
           when Array
-            expected.include?(actual)
+            if actual.is_a?(Array)
+              expected == actual # exact match when both are arrays
+            else
+              expected.include?(actual) # OR condition
+            end
           else
             expected == actual
           end
