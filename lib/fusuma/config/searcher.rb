@@ -35,14 +35,21 @@ module Fusuma
       def search_with_context(index, location:, context:)
         return nil if location.nil?
 
-        if context == {}
+        # When context is nil or empty, search in no-context config blocks
+        if context.nil? || context == {}
           no_context_conf = location.find { |conf| conf[:context].nil? }
           return no_context_conf ? search(index, location: no_context_conf) : nil
         end
 
+        # When context is specified, search only in context-having config blocks
         value = nil
-        location.find do |conf|
-          value = search(index, location: conf) if ContextMatcher.match?(conf[:context], context)
+        location.each do |conf|
+          next if conf[:context].nil? # skip no-context blocks
+
+          if ContextMatcher.match?(conf[:context], context)
+            value = search(index, location: conf)
+            break if value
+          end
         end
         value
       end
