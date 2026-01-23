@@ -9,7 +9,7 @@ Fusuma is a powerful tool designed to enable multitouch gesture recognition on L
 
 ## Features
 
-- **Easy Installation**: Quick generate via RubyGems.
+- **Easy Installation**: Easy to install via RubyGems.
 - **Flexible Configuration**: Customize gestures and actions freely in YAML file format.
 - **Sensitivity Settings**: Fine-tune gesture recognition with adjustable thresholds and intervals to suit your preferences and enhance precision.
 - **Extension through Plugins**: A [plugin system](https://github.com/iberianpig/fusuma/#fusuma-plugins) allows for additional functionality as needed.
@@ -32,7 +32,7 @@ Then, You apply the change with no logout or reboot.
 newgrp input
 ```
 
-**IMPORTANT**: This makes `/dev/input/` readable, so if that's an issue for you for some reason (like for privacy- or securityconcerns etc. or if it causes other parts of your OS to misbehave), **consider this your heads-up.** 
+**IMPORTANT**: This makes `/dev/input/` readable, so if that's an issue for you for some reason (like for privacy- or security concerns etc. or if it causes other parts of your OS to misbehave), **consider this your heads-up.** 
 
 <details>
 <summary>For Debian Based Distros (Ubuntu, Debian, Mint, Pop!_OS)</summary>
@@ -109,7 +109,7 @@ For sending shortcuts:
 ```sh
 sudo pacman -Syu xdotool
 ```
-**For the truly lazy people:** As with pretty much anything else available as Open-Source-Software, you can install Fusuma via a package from the AUR. As off time of writing (March 2023), the package you would want is called `ruby-fusuma`.
+**For the truly lazy people:** As with pretty much anything else available as Open-Source-Software, you can install Fusuma via a package from the AUR. The package you would want is called `ruby-fusuma`.
 
 Please keep in mind that this community-built package is NOT officially supported here and while it might do the job, it is not the intended way to install.
 Installing Fusuma this way means that if things do not work as intended during or after the installation, you are on your own.
@@ -428,8 +428,8 @@ Fusuma plugins are provided with the `fusuma-plugin-XXXXX` naming convention and
 ### Installation of Fusuma plugins
 
 ```sh
-# install fusuma-plugin-XXXX
-sudo gem install fusuma-plugin-XXXXX`
+# install fusuma-plugin-XXXXX
+sudo gem install fusuma-plugin-XXXXX
 ```
 ```sh
 # update
