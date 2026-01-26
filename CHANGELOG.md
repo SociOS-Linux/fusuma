@@ -1,5 +1,17 @@
 # Changelog
 
+## [v3.12.0](https://github.com/iberianpig/fusuma/tree/v3.12.0) (2026-01-26)
+
+[Full Changelog](https://github.com/iberianpig/fusuma/compare/v3.11.2...v3.12.0)
+
+**Implemented enhancements:**
+
+- feat: support multiple context conditions \(AND/OR\) [\#352](https://github.com/iberianpig/fusuma/pull/352) ([iberianpig](https://github.com/iberianpig))
+
+## [v3.11.2](https://github.com/iberianpig/fusuma/tree/v3.11.2) (2026-01-19)
+
+[Full Changelog](https://github.com/iberianpig/fusuma/compare/v3.11.1...v3.11.2)
+
 ## [v3.11.1](https://github.com/iberianpig/fusuma/tree/v3.11.1) (2026-01-10)
 
 [Full Changelog](https://github.com/iberianpig/fusuma/compare/v3.11.0...v3.11.1)
